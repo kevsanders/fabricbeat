@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -45,7 +46,9 @@ public class MainTest {
     @Test
     public void canReadAttributes() throws IOException {
 
-        Map configMap = YmlReader.readFromFileAsMap(new File(this.getClass().getResource("/config.yml").getFile()));
+        String resource = "/config.yml";
+        resource="/unfiltered.yml";
+        Map configMap = YmlReader.readFromFileAsMap(new File(this.getClass().getResource(resource).getFile()));
         List<Map> mbeans = (List<Map>) configMap.get("mbeans");
 
         String jmxUrl = "service:jmx:rmi:///jndi/rmi://localhost:9010/jmxrmi";
@@ -84,6 +87,9 @@ public class MainTest {
     }
 
     private Optional<Map> filterFor(ObjectInstance instance, List<Map> mbeans) {
+        if(mbeans==null){
+            return Optional.of(Collections.emptyMap());
+        }
         for (Map mbean : mbeans) {
             String name = String.valueOf(mbean.get("objectName"));
             try {
@@ -126,6 +132,9 @@ public class MainTest {
     }
 
     private List<String> applyFilters(Map configMetrics, Set<String> readableNames) {
+        if(configMetrics.isEmpty()){
+            return Lists.newArrayList(readableNames);
+        }
         Set<String> filteredSet = Sets.newHashSet();
         List includeDictionary = (List)configMetrics.get("include");
         List excludeDictionary = (List)configMetrics.get("exclude");
