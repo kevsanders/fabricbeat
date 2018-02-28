@@ -15,6 +15,5 @@ public class Beat {
     String name;
     Map<String,String> tags;
     Map<String,String> properties;
-    //Map<String,Number> metrics;
     JsonObject metrics;
 }

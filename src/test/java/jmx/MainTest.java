@@ -26,12 +26,14 @@ import javax.naming.Context;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -64,29 +66,39 @@ public class MainTest {
         JMXConnector jmxConnector = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), environment);
         MBeanServerConnection beanConn = jmxConnector.getMBeanServerConnection();
 
+        List<Beat> beats = new ArrayList<>();
         Set<ObjectInstance> allObjects = beanConn.queryMBeans(null, null);
         for (ObjectInstance instance : allObjects) {
-            //System.out.println(instance.getObjectName());
-
-            for (Map mbean : mbeans) {
-                String name = String.valueOf(mbean.get("objectName"));
-                try {
-                    ObjectName filter = new ObjectName(name);
-                    if(filter.apply(instance.getObjectName())){
-                        scrapeBean(beanConn, instance.getObjectName(), (Map)mbean.get("metrics"));
-                        break;
-                    }else{
-                        System.out.println(instance.getObjectName()  + " != " + name);
-                    }
-                } catch (MalformedObjectNameException e) {
-                    e.printStackTrace();
-                }
+            Optional<Map> filter = filterFor(instance, mbeans);
+            if(filter.isPresent()){
+                beats.add(scrapeBean(beanConn, instance.getObjectName(), filter.get()));
+            }else {
+                System.out.println("excluded mbean: " + instance);
             }
+        }
 
+        for (Beat beat : beats) {
+            System.out.println(beat);
         }
 
     }
-    private void scrapeBean(MBeanServerConnection beanConn, ObjectName mbeanName, Map metricsFilter) {
+
+    private Optional<Map> filterFor(ObjectInstance instance, List<Map> mbeans) {
+        for (Map mbean : mbeans) {
+            String name = String.valueOf(mbean.get("objectName"));
+            try {
+                ObjectName filter = new ObjectName(name);
+                if(filter.apply(instance.getObjectName())){
+                    return Optional.of((Map) mbean.get("metrics"));
+                }
+            } catch (MalformedObjectNameException e) {
+                System.out.println("bad objectName: " + name);;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Beat scrapeBean(MBeanServerConnection beanConn, ObjectName mbeanName, Map metricsFilter) {
         Map<String, MBeanAttributeInfo> name2AttrInfo = readInfo(beanConn, mbeanName);
 
         Set<String> readableNames = name2AttrInfo.keySet();
@@ -110,7 +122,7 @@ public class MainTest {
         builder.properties(properties);
         builder.tags(tags);
 
-        System.out.println(builder.build());
+        return builder.build();
     }
 
     private List<String> applyFilters(Map configMetrics, Set<String> readableNames) {
