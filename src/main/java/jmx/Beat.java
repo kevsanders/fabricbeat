@@ -14,6 +14,5 @@ import java.util.Map;
 public class Beat {
     String name;
     Map<String,String> tags;
-    Map<String,String> properties;
     JsonObject metrics;
 }

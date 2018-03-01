@@ -47,7 +47,7 @@ mbeans:
         - Units : "Units" #The size of the cache measured in units. This value needs to be adjusted by the UnitFactor.
         - Size : "Size" #The number of entries in the cache.
 
-  # This mbean will give cache node specific metrics. 
+  # This mbean will give cache node specific metrics.
   - objectName: "Coherence:type=Node,nodeId=*"
     metrics:
       include:
@@ -91,12 +91,12 @@ mbeans:
         - FreePhysicalMemorySize : "FreePhysicalMemorySize" #The amount of free physical memory available.
         - FreeSwapSpaceSize : "FreeSwapSpaceSize" #The amount of free swap space available.
         - OpenFileDescriptorCount : "OpenFileDescriptorCount" #The number of open file descriptors available.
-        - ProcessCpuLoad : "ProcessCpuLoad" 
+        - ProcessCpuLoad : "ProcessCpuLoad"
         - SystemCpuLoad : "SystemCpuLoad"
         - TotalPhysicalMemorySize : "TotalPhysicalMemorySize"
-        - TotalSwapSpaceSize : "TotalSwapSpaceSize"      
+        - TotalSwapSpaceSize : "TotalSwapSpaceSize"
 
-    
+
   - objectName: "Coherence:type=Service,name=DistributedCache,nodeId=*"
     metrics:
       include:

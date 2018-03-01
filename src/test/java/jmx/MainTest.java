@@ -48,7 +48,7 @@ public class MainTest {
     public void canReadAttributes() throws IOException {
 
         String resource = "/config.yml";
-        resource="/unfiltered.yml";
+        //resource="/unfiltered.yml";
         Map configMap = YmlReader.readFromFileAsMap(new File(this.getClass().getResource(resource).getFile()));
         List<Map> mbeans = (List<Map>) configMap.get("mbeans");
 
@@ -113,7 +113,6 @@ public class MainTest {
 
         final AttributeList attributes = readAttributes(beanConn, mbeanName, namesToBeExtracted.toArray(new String[0]));
 
-        Map<String,String> properties = new LinkedHashMap<>();
         Map<String,String> tags = new LinkedHashMap<>();
         for (Map.Entry<String, String> tag: mbeanName.getKeyPropertyList().entrySet()) {
             tags.put(tag.getKey(), tag.getValue());
@@ -122,11 +121,10 @@ public class MainTest {
         Beat.BeatBuilder builder = Beat.builder();
         builder.name(mbeanName.getDomain());
         for (Attribute attribute : attributes.asList()) {
-            MBeanAttributeInfo attr = name2AttrInfo.get(attribute.getName());
-            writeValue(attribute.getName(), attribute.getValue(), metrics, tags);
+            Object value = applyConvert(attribute.getName(), attribute.getValue(), metricsFilter);
+            writeValue(attribute.getName(), value, metrics, tags);
         }
         builder.metrics(metrics);
-        builder.properties(properties);
         builder.tags(tags);
 
         return builder.build();
@@ -142,6 +140,33 @@ public class MainTest {
         new ExcludeFilter(excludeDictionary).apply(filteredSet,readableNames);
         new IncludeFilter(includeDictionary).apply(filteredSet,readableNames);
         return Lists.newArrayList(filteredSet);
+    }
+
+    private Object applyConvert(String metricName,Object metricValue,Map configMetrics){
+        //get converted values if configured
+        List includeDictionary = (List)configMetrics.get("include");
+        if(includeDictionary != null) {
+            for (Object o : configMetrics.values()) {
+                if(o instanceof List){
+                    List list = (List)o;
+                    for (Object item : list) {
+                        if(item instanceof Map){
+                            Map map = (Map)item;
+                            if(map.containsKey("convert")){
+                                Map conversionValues = (Map)map.get("convert");
+                                Object convertedValue = conversionValues.get(metricValue);
+                                if (convertedValue != null) {
+                                    //logger.debug("Applied conversion on {} and replaced value {} with {}", metricName, metricValue, convertedValue);
+                                    return Double.valueOf(String.valueOf(convertedValue));
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+        return metricValue;
     }
 
     private void writeValue(String name, Object value, JsonObject metrics, Map<String, String> tags) {
