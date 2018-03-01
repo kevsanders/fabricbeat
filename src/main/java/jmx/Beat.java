@@ -1,9 +1,9 @@
 package jmx;
 
+import com.google.gson.JsonObject;
 import lombok.Builder;
 import lombok.Value;
 
-import javax.json.JsonObject;
 import java.util.Map;
 
 /**

@@ -2,12 +2,10 @@ package jmx;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.gson.JsonObject;
 import org.junit.Test;
 import yml.YmlReader;
 
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.MBeanAttributeInfo;
@@ -26,9 +24,12 @@ import javax.naming.Context;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import java.io.File;
 import java.io.IOException;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -117,14 +118,14 @@ public class MainTest {
         for (Map.Entry<String, String> tag: mbeanName.getKeyPropertyList().entrySet()) {
             tags.put(tag.getKey(), tag.getValue());
         }
-        JsonObjectBuilder metrics = Json.createObjectBuilder();
+        JsonObject metrics = new JsonObject();
         Beat.BeatBuilder builder = Beat.builder();
         builder.name(mbeanName.getDomain());
         for (Attribute attribute : attributes.asList()) {
             MBeanAttributeInfo attr = name2AttrInfo.get(attribute.getName());
-            writeValue(attribute.getName(), attribute.getValue(), metrics, properties);
+            writeValue(attribute.getName(), attribute.getValue(), metrics, tags);
         }
-        builder.metrics(metrics.build());
+        builder.metrics(metrics);
         builder.properties(properties);
         builder.tags(tags);
 
@@ -143,45 +144,31 @@ public class MainTest {
         return Lists.newArrayList(filteredSet);
     }
 
-    private void writeValue(String name, Object value, JsonObjectBuilder metrics, Map<String, String> properties) {
+    private void writeValue(String name, Object value, JsonObject metrics, Map<String, String> tags) {
         if(value instanceof Number){
-            metrics.add(name, ((Number) value).doubleValue());
+            metrics.addProperty(name, (Number) value);
         }else if(value instanceof String){
-            properties.put(name, (String) value);
+            tags.put(name, (String) value); //TODO some Number fields may need to also be indexed eg StorageEnabled
+        }else if(value instanceof Boolean){
+            metrics.addProperty(name, (Boolean) value);
+        }else if(value instanceof Date){
+            DateTimeFormatter f = DateTimeFormatter.ofPattern( "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+            metrics.addProperty(name, ((Date)value).toInstant().atOffset(ZoneOffset.UTC).format(f));
         } else if (value instanceof CompositeData) {
             CompositeData composite = (CompositeData) value;
             CompositeType type = composite.getCompositeType();
-            Map<String,JsonObjectBuilder> children = new HashMap<>();
             for(String key : type.keySet()) {
                 Object valu = composite.get(key);
-
-                JsonObjectBuilder child = children.get(name);
+                JsonObject child = (JsonObject)metrics.get(name);
                 if(child==null){
-                    child = Json.createObjectBuilder();
-                    children.put(name, child);
-                }else {
-                    JsonObject jsonObject = metrics.build().getJsonObject(name);
-                    for (String s : jsonObject.keySet()) {
-                            child.add(s, jsonObject.get(s));
-                    }
+                    metrics.add(name, child = new JsonObject());
                 }
-                writeValue( key, valu, child, properties);
-                metrics.add(name, child);
-                children.put(name, child);
-                //System.out.println(child);
+                writeValue( key, valu, child, tags);
             }
-/*
-        } else if (value instanceof TabularData) {
-            TabularData tds = (TabularData) value;
-            TabularType tt = tds.getTabularType();
-            List<String> rowKeys = tt.getIndexNames();
-            CompositeType type = tt.getRowType();
-            Set<String> valueKeys = new TreeSet<String>(type.keySet());
-            valueKeys.removeAll(rowKeys);
-            for (Object key : tds.keySet()) {
-                writeValue(name + "_" + key, tds.get(key), metrics, properties);
+        } else {
+            if(value != null){
+                System.out.println(name + " of type " + value.getClass().getSimpleName() + " not supported");
             }
-*/
         }
     }
 
