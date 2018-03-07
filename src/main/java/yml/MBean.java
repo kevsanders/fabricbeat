@@ -1,4 +1,4 @@
-package jmx;
+package yml;
 
 import lombok.Builder;
 import lombok.Value;

@@ -4,7 +4,10 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.gson.JsonObject;
 import org.junit.Test;
-import yml.YmlReader;
+import yml.Config;
+import yml.ConfigReader;
+import yml.MBean;
+import yml.MetricProperty;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
@@ -22,7 +25,6 @@ import javax.management.remote.JMXServiceURL;
 import javax.management.remote.rmi.RMIConnectorServer;
 import javax.naming.Context;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
-import java.io.File;
 import java.io.IOException;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -51,10 +53,7 @@ public class MainTest {
     @Test
     public void canReadAttributes() throws IOException {
 
-        String resource = "/config.yml";
-        //resource="/unfiltered.yml";
-        Map configMap = YmlReader.readFromFileAsMap(new File(this.getClass().getResource(resource).getFile()));
-        Config config = buildConfig(configMap);
+        Config config = new ConfigReader().readConfig("/config.yml");
 
         String jmxUrl = "service:jmx:rmi:///jndi/rmi://localhost:9010/jmxrmi";
         Map<String, Object> environment = new HashMap<String, Object>();
@@ -89,50 +88,6 @@ public class MainTest {
             System.out.println(beat);
         }
 
-    }
-
-
-  //build as required
-    private Config buildConfig(Map configMap) {
-        Config.ConfigBuilder builder = Config.builder();
-        List<Map> mbeans = (List<Map>) configMap.get("mbeans");
-        List<MBean> beans = new ArrayList<>(mbeans.size());
-        for (Map mbean : mbeans) {
-            MBean.MBeanBuilder mBeanBuilder = MBean.builder().objectName((String)mbean.get("objectName"));
-            Map configMetrics = (Map)mbean.get(METRICS);
-            List includeMetrics = (List)configMetrics.get(INCLUDE);
-            List<MetricProperty> metricProperties = new ArrayList<>();
-            if(includeMetrics != null){
-                for(Object metad : includeMetrics){
-                    Map localMetaData = (Map)metad;
-                    Map.Entry entry = (Map.Entry)localMetaData.entrySet().iterator().next();
-                    String metricName = entry.getKey().toString();
-                    String alias = entry.getValue().toString();
-                    MetricProperty.MetricPropertyBuilder props = MetricProperty.builder();
-                    props.alias(alias);
-                    props.name(metricName);
-                    setProps(configMap,props); //global level
-                    setProps(localMetaData, props); //local level
-                    metricProperties.add(props.build());
-                }
-            }
-            mBeanBuilder.metrics(metricProperties);
-            beans.add(mBeanBuilder.build());
-        }
-        builder.mbeans(beans);
-        return builder.build();
-    }
-    private void setProps(Map metadata, MetricProperty.MetricPropertyBuilder props) {
-        if(metadata.get("convert") != null){
-            props.conversionMap((Map)metadata.get("convert"));
-        }else {
-            props.conversionMap(Collections.emptyMap());
-        }
-        if(metadata.get("delta") != null){
-            props.delta(Boolean.parseBoolean(metadata.get("delta").toString()));
-        }else {
-            props.delta(false);
-        }
     }
 
     private Optional<List<MetricProperty>> filterFor(ObjectInstance instance, List<MBean> mbeans) {
