@@ -36,6 +36,7 @@ mbeans:
   - objectName: "Coherence:type=Cache,service=*,name=*,nodeId=*,tier=*"
     aggregation: true
     metricType: "AVERAGE AVERAGE COLLECTIVE"
+    delta: true
     metrics:
       include:
         - CacheHits : "CacheHits" #The rough number of cache hits since the last time statistics were reset. A cache hit is a read operation invocation (that is, get()) for which an entry exists in this map.
@@ -44,7 +45,9 @@ mbeans:
         - TotalGets : "TotalGets" #The total number of get() operations since the last time statistics were reset.
         - TotalPuts : "TotalPuts" #The total number of put() operations since the last time statistics were reset.
         - UnitFactor : "UnitFactor" #The factor by which the Units, LowUnits and HighUnits properties are adjusted. Using a BINARY unit calculator, for example, the factor of 1048576 could be used to count megabytes instead of bytes.
+          delta: false
         - Units : "Units" #The size of the cache measured in units. This value needs to be adjusted by the UnitFactor.
+          delta: false
         - Size : "Size" #The number of entries in the cache.
 
   # This mbean will give cache node specific metrics.

@@ -13,9 +13,9 @@ import java.util.Set;
 
 public class ExcludeFilter {
 
-    private List dictionary;
+    private List<String> dictionary;
 
-    public ExcludeFilter(List excludeDictionary) {
+    public ExcludeFilter(List<String> excludeDictionary) {
         this.dictionary = excludeDictionary;
     }
 

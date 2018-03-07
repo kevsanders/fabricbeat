@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Created by kevsa on 24/02/2018.
@@ -44,13 +45,16 @@ import java.util.Set;
 //@Slf4j
 public class MainTest {
 
+    public static final String METRICS = "metrics";
+    public static final String INCLUDE = "include";
+
     @Test
     public void canReadAttributes() throws IOException {
 
         String resource = "/config.yml";
         //resource="/unfiltered.yml";
         Map configMap = YmlReader.readFromFileAsMap(new File(this.getClass().getResource(resource).getFile()));
-        List<Map> mbeans = (List<Map>) configMap.get("mbeans");
+        Config config = buildConfig(configMap);
 
         String jmxUrl = "service:jmx:rmi:///jndi/rmi://localhost:9010/jmxrmi";
         Map<String, Object> environment = new HashMap<String, Object>();
@@ -73,7 +77,7 @@ public class MainTest {
         List<Beat> beats = new ArrayList<>();
         Set<ObjectInstance> allObjects = beanConn.queryMBeans(null, null);
         for (ObjectInstance instance : allObjects) {
-            Optional<Map> filter = filterFor(instance, mbeans);
+            Optional<List<MetricProperty>> filter = filterFor(instance, config.getMbeans());
             if(filter.isPresent()){
                 beats.add(scrapeBean(beanConn, instance.getObjectName(), filter.get()));
             }else {
@@ -87,16 +91,60 @@ public class MainTest {
 
     }
 
-    private Optional<Map> filterFor(ObjectInstance instance, List<Map> mbeans) {
-        if(mbeans==null){
-            return Optional.of(Collections.emptyMap());
-        }
+
+  //build as required
+    private Config buildConfig(Map configMap) {
+        Config.ConfigBuilder builder = Config.builder();
+        List<Map> mbeans = (List<Map>) configMap.get("mbeans");
+        List<MBean> beans = new ArrayList<>(mbeans.size());
         for (Map mbean : mbeans) {
-            String name = String.valueOf(mbean.get("objectName"));
+            MBean.MBeanBuilder mBeanBuilder = MBean.builder().objectName((String)mbean.get("objectName"));
+            Map configMetrics = (Map)mbean.get(METRICS);
+            List includeMetrics = (List)configMetrics.get(INCLUDE);
+            List<MetricProperty> metricProperties = new ArrayList<>();
+            if(includeMetrics != null){
+                for(Object metad : includeMetrics){
+                    Map localMetaData = (Map)metad;
+                    Map.Entry entry = (Map.Entry)localMetaData.entrySet().iterator().next();
+                    String metricName = entry.getKey().toString();
+                    String alias = entry.getValue().toString();
+                    MetricProperty.MetricPropertyBuilder props = MetricProperty.builder();
+                    props.alias(alias);
+                    props.name(metricName);
+                    setProps(configMap,props); //global level
+                    setProps(localMetaData, props); //local level
+                    metricProperties.add(props.build());
+                }
+            }
+            mBeanBuilder.metrics(metricProperties);
+            beans.add(mBeanBuilder.build());
+        }
+        builder.mbeans(beans);
+        return builder.build();
+    }
+    private void setProps(Map metadata, MetricProperty.MetricPropertyBuilder props) {
+        if(metadata.get("convert") != null){
+            props.conversionMap((Map)metadata.get("convert"));
+        }else {
+            props.conversionMap(Collections.emptyMap());
+        }
+        if(metadata.get("delta") != null){
+            props.delta(Boolean.parseBoolean(metadata.get("delta").toString()));
+        }else {
+            props.delta(false);
+        }
+    }
+
+    private Optional<List<MetricProperty>> filterFor(ObjectInstance instance, List<MBean> mbeans) {
+        if(mbeans==null){
+            return Optional.of(Collections.emptyList());
+        }
+        for (MBean mbean : mbeans) {
+            String name = mbean.getObjectName();
             try {
                 ObjectName filter = new ObjectName(name);
                 if(filter.apply(instance.getObjectName())){
-                    return Optional.of((Map) mbean.get("metrics"));
+                    return Optional.of(mbean.getMetrics());
                 }
             } catch (MalformedObjectNameException e) {
                 System.out.println("bad objectName: " + name);;
@@ -105,7 +153,7 @@ public class MainTest {
         return Optional.empty();
     }
 
-    private Beat scrapeBean(MBeanServerConnection beanConn, ObjectName mbeanName, Map metricsFilter) {
+    private Beat scrapeBean(MBeanServerConnection beanConn, ObjectName mbeanName, List<MetricProperty> metricsFilter) {
         Map<String, MBeanAttributeInfo> name2AttrInfo = readInfo(beanConn, mbeanName);
 
         Set<String> readableNames = name2AttrInfo.keySet();
@@ -130,40 +178,35 @@ public class MainTest {
         return builder.build();
     }
 
-    private List<String> applyFilters(Map configMetrics, Set<String> readableNames) {
+    private List<String> applyFilters(List<MetricProperty> configMetrics, Set<String> readableNames) {
         if(configMetrics.isEmpty()){
             return Lists.newArrayList(readableNames);
         }
         Set<String> filteredSet = Sets.newHashSet();
-        List includeDictionary = (List)configMetrics.get("include");
-        List excludeDictionary = (List)configMetrics.get("exclude");
-        new ExcludeFilter(excludeDictionary).apply(filteredSet,readableNames);
-        new IncludeFilter(includeDictionary).apply(filteredSet,readableNames);
+        List<String> includes = configMetrics.stream()
+                .filter(p -> !p.isExclude())
+                .map(MetricProperty::getName)
+                .collect(Collectors.toList());
+        List<String> excludes = configMetrics.stream()
+                .filter(p -> p.isExclude())
+                .map(MetricProperty::getName)
+                .collect(Collectors.toList());
+
+        new ExcludeFilter(excludes).apply(filteredSet,readableNames);
+        new IncludeFilter(includes).apply(filteredSet,readableNames);
         return Lists.newArrayList(filteredSet);
     }
 
-    private Object applyConvert(String metricName,Object metricValue,Map configMetrics){
+    private Object applyConvert(String metricName, Object metricValue, List<MetricProperty> configMetrics){
         //get converted values if configured
-        List includeDictionary = (List)configMetrics.get("include");
-        if(includeDictionary != null) {
-            for (Object o : configMetrics.values()) {
-                if(o instanceof List){
-                    List list = (List)o;
-                    for (Object item : list) {
-                        if(item instanceof Map){
-                            Map map = (Map)item;
-                            if(map.containsKey("convert")){
-                                Map conversionValues = (Map)map.get("convert");
-                                Object convertedValue = conversionValues.get(metricValue);
-                                if (convertedValue != null) {
-                                    //logger.debug("Applied conversion on {} and replaced value {} with {}", metricName, metricValue, convertedValue);
-                                    return Double.valueOf(String.valueOf(convertedValue));
-                                }
-                            }
-                        }
-                    }
+        for (MetricProperty metricProperty : configMetrics) {
+            if(metricProperty.getName().equals(metricName) && !metricProperty.isExclude()){
+                Map conversionValues = metricProperty.getConversionMap();
+                Object convertedValue = conversionValues.get(metricValue);
+                if (convertedValue != null) {
+                    //logger.debug("Applied conversion on {} and replaced value {} with {}", metricName, metricValue, convertedValue);
+                    return Double.valueOf(String.valueOf(convertedValue));
                 }
-
             }
         }
         return metricValue;

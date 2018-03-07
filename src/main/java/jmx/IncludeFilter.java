@@ -14,9 +14,9 @@ import java.util.Set;
 
 public class IncludeFilter {
 
-    private List dictionary;
+    private List<String> dictionary;
 
-    public IncludeFilter(List includeDictionary) {
+    public IncludeFilter(List<String> includeDictionary) {
         this.dictionary = includeDictionary;
     }
 
@@ -24,11 +24,7 @@ public class IncludeFilter {
         if(allMetrics == null || dictionary == null){
             return;
         }
-        for(Object inc : dictionary){
-            Map metric = (Map) inc;
-            //Get the First Entry which is the metric
-            Map.Entry firstEntry = (Map.Entry) metric.entrySet().iterator().next();
-            String metricName = firstEntry.getKey().toString();
+        for(String metricName : dictionary){
             if(allMetrics.contains(metricName)) {
                 filteredSet.add(metricName); //to get jmx metrics
             }
