@@ -59,24 +59,9 @@ public class YmlReader {
         }
     }
 
-    public static Map<String, ?> readFromFile(File file) {
-        Yaml yaml = new Yaml();
-
-        try {
-            return (Map)yaml.load(new FileReader(file));
-        } catch (FileNotFoundException var3) {
-            throw new YmlReader.InvalidYmlPathException("The file " + file.getAbsolutePath() + " doesn\'t exit in the file system");
-        }
-    }
-
-    public static Map<String, ?> readFromFileAsMap(File file) {
-        Yaml yaml = new Yaml();
-
-        try {
-            return (Map)yaml.load(new FileReader(file));
-        } catch (FileNotFoundException var3) {
-            throw new YmlReader.InvalidYmlPathException("The file " + file.getAbsolutePath() + " doesn\'t exit in the file system");
-        }
+    public static Map<String, ?> readFromResourceAsMap(String resource) {
+        InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resource);
+        return (Map)new Yaml().load(inputStream);
     }
 
     public static class InvalidYmlPathException extends RuntimeException {

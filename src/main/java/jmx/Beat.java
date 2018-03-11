@@ -13,6 +13,15 @@ import java.util.Map;
 @Builder
 public class Beat {
     String name;
+    Metricset metricset;
     Map<String,String> tags;
     JsonObject metrics;
+
+    @Value
+    @Builder
+    public static class Metricset {
+        String module;
+        String name;
+    }
+
 }
