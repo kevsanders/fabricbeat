@@ -53,7 +53,9 @@ public class MainTest {
     @Test
     public void canReadAttributes() throws IOException {
 
-        Config config = new ConfigReader().readConfig("/config.yml");
+        String resource = "config.yml";
+        resource = "unfiltered.yml";
+        Config config = new ConfigReader().readConfig(resource);
 
         String jmxUrl = "service:jmx:rmi:///jndi/rmi://localhost:9010/jmxrmi";
         Map<String, Object> environment = new HashMap<String, Object>();
@@ -91,7 +93,7 @@ public class MainTest {
     }
 
     private Optional<List<MetricProperty>> filterFor(ObjectInstance instance, List<MBean> mbeans) {
-        if(mbeans==null){
+        if(mbeans==null||mbeans.isEmpty()){
             return Optional.of(Collections.emptyList());
         }
         for (MBean mbean : mbeans) {
@@ -121,16 +123,24 @@ public class MainTest {
             tags.put(tag.getKey(), tag.getValue());
         }
         JsonObject metrics = new JsonObject();
-        Beat.BeatBuilder builder = Beat.builder();
-        builder.name(mbeanName.getDomain());
         for (Attribute attribute : attributes.asList()) {
             Object value = applyConvert(attribute.getName(), attribute.getValue(), metricsFilter);
             writeValue(attribute.getName(), value, metrics, tags);
         }
-        builder.metrics(metrics);
-        builder.tags(tags);
+        //.getDomain()
 
-        return builder.build();
+        Beat.Metricset metricset = Beat.Metricset.builder()
+                .host("")
+                .module(mbeanName.getDomain())
+                .name(mbeanName.getKeyProperty("type"))
+                .build();
+
+        return Beat.builder()
+                .name(String.valueOf(mbeanName))
+                .metrics(metrics)
+                .tags(tags)
+                .metricset(metricset)
+                .build();
     }
 
     private List<String> applyFilters(List<MetricProperty> configMetrics, Set<String> readableNames) {

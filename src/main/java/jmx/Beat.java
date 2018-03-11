@@ -20,6 +20,7 @@ public class Beat {
     @Value
     @Builder
     public static class Metricset {
+        String host;
         String module;
         String name;
     }

@@ -6,16 +6,16 @@ package yml;
 //
 
 import com.google.common.base.Strings;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.InputStream;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.util.Map;
 
 public class YmlReader {
     public static final Logger logger = LoggerFactory.getLogger(YmlReader.class);
@@ -61,7 +61,10 @@ public class YmlReader {
 
     public static Map<String, ?> readFromResourceAsMap(String resource) {
         InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resource);
-        return (Map)new Yaml().load(inputStream);
+        if(inputStream==null){
+            throw new IllegalArgumentException("Resource not found: " + resource);
+        }
+        return read(inputStream, Map.class);
     }
 
     public static class InvalidYmlPathException extends RuntimeException {

@@ -20,30 +20,35 @@ public class ConfigReader {
     private Config buildConfig(Map configMap) {
         Config.ConfigBuilder builder = Config.builder();
         List<Map> mbeansConfig = (List<Map>) configMap.get("mbeans");
-        List<MBean> mBeans = new ArrayList<>(mbeansConfig.size());
-        for (Map mbeanMap : mbeansConfig) {
-            MBean.MBeanBuilder mBeanBuilder = MBean.builder().objectName((String)mbeanMap.get("objectName"));
-            Map configMetrics = (Map)mbeanMap.get(METRICS);
-            List includeMetrics = (List)configMetrics.get(INCLUDE);
-            //TODO: add exclusions
-            List<MetricProperty> metricProperties = new ArrayList<>();
-            if(includeMetrics != null){
-                for(Object metad : includeMetrics){
-                    Map localMetaData = (Map)metad;
-                    Map.Entry entry = (Map.Entry)localMetaData.entrySet().iterator().next();
-                    String metricName = entry.getKey().toString();
-                    String alias = entry.getValue().toString();
-                    MetricProperty.MetricPropertyBuilder props = MetricProperty.builder();
-                    props.alias(alias);
-                    props.name(metricName);
-                    props.exclude(false);
-                    setProps(configMap, props); //global level
-                    setProps(localMetaData, props); //local level
-                    metricProperties.add(props.build());
+        List<MBean> mBeans;
+        if(mbeansConfig==null){
+            mBeans = Collections.emptyList();
+        }else {
+            mBeans = new ArrayList<>(mbeansConfig.size());
+            for (Map mbeanMap : mbeansConfig) {
+                MBean.MBeanBuilder mBeanBuilder = MBean.builder().objectName((String)mbeanMap.get("objectName"));
+                Map configMetrics = (Map)mbeanMap.get(METRICS);
+                List includeMetrics = (List)configMetrics.get(INCLUDE);
+                //TODO: add exclusions
+                List<MetricProperty> metricProperties = new ArrayList<>();
+                if(includeMetrics != null){
+                    for(Object metad : includeMetrics){
+                        Map localMetaData = (Map)metad;
+                        Map.Entry entry = (Map.Entry)localMetaData.entrySet().iterator().next();
+                        String metricName = entry.getKey().toString();
+                        String alias = entry.getValue().toString();
+                        MetricProperty.MetricPropertyBuilder props = MetricProperty.builder();
+                        props.alias(alias);
+                        props.name(metricName);
+                        props.exclude(false);
+                        setProps(configMap, props); //global level
+                        setProps(localMetaData, props); //local level
+                        metricProperties.add(props.build());
+                    }
                 }
+                mBeanBuilder.metrics(metricProperties);
+                mBeans.add(mBeanBuilder.build());
             }
-            mBeanBuilder.metrics(metricProperties);
-            mBeans.add(mBeanBuilder.build());
         }
         builder.mbeans(mBeans);
         return builder.build();
