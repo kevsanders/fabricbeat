@@ -3,43 +3,29 @@ package jmx;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.gson.JsonObject;
+import org.junit.Before;
 import org.junit.Test;
 import yml.Config;
 import yml.ConfigReader;
 import yml.MBean;
 import yml.MetricProperty;
 
-import javax.management.Attribute;
-import javax.management.AttributeList;
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanInfo;
-import javax.management.MBeanServerConnection;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectInstance;
-import javax.management.ObjectName;
+import javax.management.*;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
 import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
 import javax.management.remote.rmi.RMIConnectorServer;
 import javax.naming.Context;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import java.io.IOException;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Created by kevsa on 24/02/2018.
@@ -49,16 +35,13 @@ public class MainTest {
 
     public static final String METRICS = "metrics";
     public static final String INCLUDE = "include";
+    private String jmxUrl;
+    private JMXConnector jmxConnector;
+    private MBeanServerConnection beanConn;
 
-    @Test
-    public void canReadAttributes() throws IOException {
-
-        String resource = "config.yml";
-        resource = "unfiltered.yml";
-        Config config = new ConfigReader().readConfig(resource);
-
-        String jmxUrl = "service:jmx:rmi:///jndi/rmi://localhost:9010/jmxrmi";
-        Map<String, Object> environment = new HashMap<String, Object>();
+    @Before
+    public void setUp() throws Exception {
+        Map<String, Object> environment = new HashMap<>();
         String username = null;
         String password = null;
         if (username != null && username.length() != 0 && password != null && password.length() != 0) {
@@ -72,8 +55,21 @@ public class MainTest {
             environment.put(RMIConnectorServer.RMI_CLIENT_SOCKET_FACTORY_ATTRIBUTE, clientSocketFactory);
             environment.put("com.sun.jndi.rmi.factory.socket", clientSocketFactory);
         }
-        JMXConnector jmxConnector = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), environment);
-        MBeanServerConnection beanConn = jmxConnector.getMBeanServerConnection();
+        jmxUrl = "service:jmx:rmi:///jndi/rmi://localhost:9010/jmxrmi";
+        //jmxConnector = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), environment);
+        //beanConn = jmxConnector.getMBeanServerConnection();
+        beanConn = mock(MBeanServerConnection.class);
+        when(beanConn.queryMBeans(any(), any())).thenReturn(JMXDataProviderUtil.getSetWithNodeObjInstances());
+        when(beanConn.getMBeanInfo(any())).thenReturn(JMXDataProviderUtil.getNodeInfo(null));
+    }
+
+    @Test
+    public void canReadAttributes() throws IOException {
+
+        String resource = "config.yml";
+        resource = "unfiltered.yml";
+        Config config = new ConfigReader().readConfig(resource);
+
 
         List<Beat> beats = new ArrayList<>();
         Set<ObjectInstance> allObjects = beanConn.queryMBeans(null, null);
