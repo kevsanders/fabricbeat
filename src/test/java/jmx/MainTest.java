@@ -14,6 +14,8 @@ import javax.management.*;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
 import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
 import javax.management.remote.rmi.RMIConnectorServer;
 import javax.naming.Context;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
@@ -23,7 +25,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -59,8 +63,31 @@ public class MainTest {
         //jmxConnector = JMXConnectorFactory.connect(new JMXServiceURL(jmxUrl), environment);
         //beanConn = jmxConnector.getMBeanServerConnection();
         beanConn = mock(MBeanServerConnection.class);
-        when(beanConn.queryMBeans(any(), any())).thenReturn(JMXDataProviderUtil.getSetWithNodeObjInstances());
-        when(beanConn.getMBeanInfo(any())).thenReturn(JMXDataProviderUtil.getNodeInfo(null));
+        when(beanConn.queryMBeans(any(), any())).thenReturn(JMXDataProviderUtil.getSetWithClusterObjInstance());
+        when(beanConn.getMBeanInfo(eq(new ObjectName("Coherence:type=Cluster")))).thenReturn(JMXDataProviderUtil.getMBeanInfoForCluster("Coherence:type=Cluster"));
+        when(beanConn.getMBeanInfo(eq(new ObjectName("Coherence:type=Node")))).thenReturn(JMXDataProviderUtil.getMBeanInfoForNode("Coherence:type=Node"));
+
+        {
+            AttributeList attList = new AttributeList();
+            attList.add(new Attribute("TaskBacklog",34));
+            when(beanConn.getAttributes(
+                    new ObjectName("Coherence:type=Cluster"),
+                    new String[]{"TaskBacklog"}))
+                    .thenReturn(attList);
+
+        }
+        {
+            AttributeList attList = new AttributeList();
+            attList.add(new Attribute("Memory",34));
+            attList.add(new Attribute("CPU",34));
+            attList.add(new Attribute("TaskBacklog",34));
+            when(beanConn.getAttributes(
+                    new ObjectName("Coherence:type=Node"),
+                    new String[]{"Memory","CPU","TaskBacklog"}))
+                    .thenReturn(attList);
+
+        }
+
     }
 
     @Test
@@ -84,6 +111,26 @@ public class MainTest {
 
         for (Beat beat : beats) {
             System.out.println(beat);
+        }
+
+        {
+            Map<String, String> clusterTags = new HashMap<>();
+            clusterTags.put("type", "Cluster");
+            JsonObject metrics = new JsonObject();
+            metrics.addProperty("TaskBacklog", 34);
+            assertEquals("wrong beat ", beats.get(0),
+                    new Beat("Coherence:type=Cluster", new Beat.Metricset("", "Coherence", "Cluster"), clusterTags, metrics));
+        }
+        {
+            Map<String,String> nodeTags = new HashMap<>();
+            nodeTags.put("type", "Node");
+            JsonObject metrics = new JsonObject();
+            metrics.addProperty("Memory", 34);
+            metrics.addProperty("CPU", 34);
+            metrics.addProperty("TaskBacklog", 34);
+            assertEquals("wrong beat ", beats.get(1),
+                    new Beat("Coherence:type=Node", new Beat.Metricset("", "Coherence", "Node"), nodeTags, metrics));
+
         }
 
     }

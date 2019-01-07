@@ -21,6 +21,7 @@ public class JMXDataProviderUtil {
     static Set<ObjectInstance> getSetWithClusterObjInstance() throws MalformedObjectNameException {
         Set<ObjectInstance> instanceSet = Sets.newHashSet();
         instanceSet.add(new ObjectInstance("Coherence:type=Cluster","com.tangosol.coherence.component.manageable.modelAdapter.ClusterMBean"));
+        instanceSet.add(new ObjectInstance("Coherence:type=Node","com.tangosol.coherence.component.manageable.modelAdapter.ClusterNodeMBean"));
         return instanceSet;
     }
 
@@ -69,9 +70,26 @@ public class JMXDataProviderUtil {
     }
 
     static MBeanInfo getNodeInfo(ObjectName objectName){
-        MBeanAttributeInfo[] attributes = new MBeanAttributeInfo[1];
-        attributes[0] = new MBeanAttributeInfo("TaskBacklog","","", true, false, false);
-        MBeanInfo mBeanInfo = new MBeanInfo("foo","bar", attributes, null,null,null);
+        MBeanAttributeInfo[] attributes = new MBeanAttributeInfo[3];
+        attributes[0] = new MBeanAttributeInfo("Memory","","", true, false, false);
+        attributes[1] = new MBeanAttributeInfo("CPU","","", true, false, false);
+        attributes[2] = new MBeanAttributeInfo("TaskBacklog","","", true, false, false);
+        MBeanInfo mBeanInfo = new MBeanInfo(objectName.getCanonicalName(),objectName.getDomain(), attributes, null,null,null);
         return mBeanInfo;
     }
+
+    static MBeanInfo getMBeanInfoForCluster(String name) {
+        MBeanAttributeInfo[] attributes = new MBeanAttributeInfo[1];
+        attributes[0] = new MBeanAttributeInfo("TaskBacklog","TaskBacklog:type","TaskBacklog:description", true, false, false);
+        return new MBeanInfo(name,"com.tangosol.coherence.component.manageable.modelAdapter.ClusterMBean", attributes, null,null,null);
+    }
+
+    static MBeanInfo getMBeanInfoForNode(String name) {
+        MBeanAttributeInfo[] attributes = new MBeanAttributeInfo[3];
+        attributes[0] = new MBeanAttributeInfo("Memory","TaskBacklog:type","TaskBacklog:description", true, false, false);
+        attributes[1] = new MBeanAttributeInfo("CPU","TaskBacklog:type","TaskBacklog:description", true, false, false);
+        attributes[2] = new MBeanAttributeInfo("TaskBacklog","TaskBacklog:type","TaskBacklog:description", true, false, false);
+        return new MBeanInfo(name,"com.tangosol.coherence.component.manageable.modelAdapter.ClusterNodeMBean", attributes, null,null,null);
+    }
+
 }
