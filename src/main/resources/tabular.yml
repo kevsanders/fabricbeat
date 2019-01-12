@@ -1,0 +1,36 @@
+### ANY CHANGES TO THIS FILE DOES NOT REQUIRE A RESTART ###
+
+#This will create this metric in all the tiers, under this path
+metricPrefix: Custom Metrics|Coherence
+
+#This will create it in specific Tier aka Component. Replace <COMPONENT_ID> with actual component Id.
+#To get the COMPONENT_ID, please refer https://docs.appdynamics.com/display/PRO42/Build+a+Monitoring+Extension+Using+Java
+#metricPrefix: Server|Component:<COMPONENT_ID>|Custom Metrics|Coherence
+
+# List of Coherence Instances
+instances:
+  - host: "localhost"
+    port: 9010
+    username: ""
+    password: ""
+    #displayName is a required field for node level metrics.
+    displayName: "local"
+
+
+# number of concurrent tasks.
+# This doesn't need to be changed unless many servers are configured
+numberOfThreads: 10
+
+
+# The configuration of different metrics from various mbeans of coherence server
+# For most cases, the mbean configuration does not need to be changed.
+#
+mbeans:
+  # This mbean is to get cluster related metrics.
+  - objectName: "java.lang:type=GarbageCollector,name=PS Scavenge"
+    metrics:
+      include:
+        - memoryUsageAfterGc : "memoryUsageAfterGc"
+        - memoryUsageBeforeGc : "memoryUsageBeforeGc"
+        - MemoryPoolNames : "MemoryPoolNames"
+

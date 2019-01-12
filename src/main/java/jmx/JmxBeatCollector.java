@@ -2,7 +2,9 @@ package jmx;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +22,8 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularType;
 import java.io.IOException;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -33,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 /**
@@ -94,7 +99,7 @@ public class JmxBeatCollector implements BeatCollector {
         JsonObject metrics = new JsonObject();
         for (Attribute attribute : attributes.asList()) {
             Object value = applyConvert(attribute.getName(), attribute.getValue(), metricsFilter);
-            writeValue(attribute.getName(), value, metrics, tags);
+            writeValue(attribute.getName(), value, metrics, tags, mbeanName);
         }
         //.getDomain()
 
@@ -146,11 +151,18 @@ public class JmxBeatCollector implements BeatCollector {
         return metricValue;
     }
 
-    private void writeValue(String name, Object value, JsonObject metrics, Map<String, String> tags) {
+    private void writeValue(String name, Object value, JsonObject metrics, Map<String, String> tags, ObjectName mbeanName) {
         if(value instanceof Number){
-            metrics.addProperty(name, (Number) value);
+            metrics.addProperty(name, (Number) value);//TODO some Number fields may need to also be indexed eg StorageEnabled
         }else if(value instanceof String){
-            tags.put(name, (String) value); //TODO some Number fields may need to also be indexed eg StorageEnabled
+            metrics.addProperty(name, (String) value);
+        }else if(value instanceof String[]){
+            String[] array = (String[])value;
+            JsonArray child = new JsonArray();
+            for(int n=0; n< array.length; n++){
+                child.add(new JsonPrimitive(array[n]));
+            }
+            metrics.add(name, child);
         }else if(value instanceof Boolean){
             metrics.addProperty(name, (Boolean) value);
         }else if(value instanceof Date){
@@ -165,11 +177,35 @@ public class JmxBeatCollector implements BeatCollector {
                 if(child==null){
                     metrics.add(name, child = new JsonObject());
                 }
-                writeValue( key, valu, child, tags);
+                writeValue( key, valu, child, tags, mbeanName);
+            }
+        } else if (value instanceof TabularData) {
+            TabularData tds = (TabularData) value;
+            TabularType tt = tds.getTabularType();
+            List<String> rowKeys = tt.getIndexNames();
+
+            CompositeType type = tt.getRowType();
+            Set<String> valueKeys = new TreeSet<>(type.keySet());
+            valueKeys.removeAll(rowKeys);
+
+            for (Object valu : tds.values()) {
+                if (valu instanceof CompositeData) {
+                    CompositeData composite = (CompositeData) valu;
+                    for (String idx : rowKeys) {
+                        String key = String.valueOf(composite.get(idx));
+                        JsonObject child = (JsonObject)metrics.get(name);
+                        if(child==null){
+                            metrics.add(name, child = new JsonObject());
+                        }
+                        writeValue( key, valu, child, tags, mbeanName);
+                    }
+                } else {
+                    log.info("{} of type {} from {} not a correct tabulardata format", name, value.getClass().getSimpleName(), mbeanName);
+                }
             }
         } else {
             if(value != null){
-                log.info(name + " of type " + value.getClass().getSimpleName() + " not supported");
+                log.info("{} of type {} from {} not supported", name, value.getClass().getSimpleName(), mbeanName);
             }
         }
     }

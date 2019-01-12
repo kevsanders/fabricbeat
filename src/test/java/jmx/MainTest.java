@@ -121,6 +121,8 @@ public class MainTest {
 
         beanConn = createRealConnection("service:jmx:rmi:///jndi/rmi://localhost:9010/jmxrmi", null, null);
         config = new ConfigReader().readConfig("config.yml");
+        config = new ConfigReader().readConfig("unfiltered.yml");
+        config = new ConfigReader().readConfig("tabular.yml");
 
         JmxBeatCollector beatCollector = JmxBeatCollector.builder()
                 .beanConn(beanConn)
