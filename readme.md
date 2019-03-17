@@ -16,6 +16,11 @@ D:\tools\prometheus\prometheus-2.1.0.windows-amd64> ./prometheus --config.file=p
 notes
 -----------------------------------
 
+docker run -d store/oracle/coherence:12.2.1.1
+
+#use docker compose
+https://finestructure.co/blog/2016/5/16/monitoring-with-prometheus-grafana-docker-part-1
+
 1) start coherence (with jmx expose via rmi)
 D:\tools\Oracle\coherence\bin> .\cache-server.cmd -jmx
 

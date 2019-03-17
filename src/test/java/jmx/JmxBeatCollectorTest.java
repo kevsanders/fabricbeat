@@ -37,7 +37,7 @@ import static org.mockito.Mockito.when;
  * Created by kevsa on 24/02/2018.
  */
 @Slf4j
-public class MainTest {
+public class JmxBeatCollectorTest {
 
     private MBeanServerConnection beanConn;
     private Config config;

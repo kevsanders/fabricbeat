@@ -1,0 +1,15 @@
+# docker-compose.yml
+version: '2'
+services:
+    prometheus:
+        image: prom/prometheus:0.18.0
+        volumes:
+            - ./prometheus.yml:/etc/prometheus/prometheus.yml
+        command:
+            - '-config.file=/etc/prometheus/prometheus.yml'
+        ports:
+            - '9090:9090'
+    node-exporter:
+        image: prom/node-exporter:0.12.0rc1
+        ports:
+            - '9100:9100'
