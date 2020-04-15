@@ -6,7 +6,19 @@
 
     <groupId>sandkev</groupId>
     <artifactId>fabricbeat</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.${revision}</version>
+
+    <properties>
+        <revision>0-SNAPSHOT</revision>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>1.8</java.version>
+        <time.stamp>${maven.build.timestamp}</time.stamp>
+        <maven.build.timestamp.format>yyyyMMdd_HHmmss</maven.build.timestamp.format>
+    </properties>
+
+
 
     <dependencies>
         <dependency>
@@ -72,10 +84,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.2</version>
+                <version>3.1</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
                 </configuration>
             </plugin>
             <plugin>

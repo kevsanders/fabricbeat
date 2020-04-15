@@ -1,6 +1,5 @@
 package jmx.beats;
 
-import jmx.UsedMemory;
 import lombok.Builder;
 import lombok.Value;
 

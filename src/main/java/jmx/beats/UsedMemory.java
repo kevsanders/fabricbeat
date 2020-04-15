@@ -1,4 +1,4 @@
-package jmx;
+package jmx.beats;
 
 import lombok.Builder;
 import lombok.Value;

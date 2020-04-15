@@ -78,7 +78,7 @@ public class JmxBeatCollector implements BeatCollector {
                     return Optional.of(mbean.getMetrics());
                 }
             } catch (MalformedObjectNameException e) {
-                log.info("bad objectName: " + name);;
+                log.info("bad objectName: " + name);
             }
         }
         return Optional.empty();
@@ -123,11 +123,11 @@ public class JmxBeatCollector implements BeatCollector {
         }
         Set<String> filteredSet = Sets.newHashSet();
         List<String> includes = configMetrics.stream()
-                .filter(p -> !p.isExclude())
+                .filter(MetricProperty::isExclude)
                 .map(MetricProperty::getName)
                 .collect(Collectors.toList());
         List<String> excludes = configMetrics.stream()
-                .filter(p -> p.isExclude())
+                .filter(MetricProperty::isExclude)
                 .map(MetricProperty::getName)
                 .collect(Collectors.toList());
 
