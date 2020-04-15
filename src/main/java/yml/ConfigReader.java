@@ -13,7 +13,7 @@ public class ConfigReader {
     public static final String INCLUDE = "include";
 
     public Config readConfig(String resource){
-        Map configMap = YmlReader.readFromResourceAsMap(resource);
+        Map<String,String> configMap = (Map<String,String>)YmlReader.readFromResourceAsMap(resource);
         return buildConfig(configMap);
     }
     private Config buildConfig(Map configMap) {
